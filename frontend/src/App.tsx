@@ -13,6 +13,9 @@ function App() {
   const callRef = useRef<DailyCall | null>(null)
 
   const connect = useCallback(async () => {
+    // Prevent double-clicks
+    if (connectionState !== 'idle' && connectionState !== 'error') return
+
     setConnectionState('connecting')
 
     try {
@@ -100,7 +103,7 @@ function App() {
       console.error('Connection error:', error)
       setConnectionState('error')
     }
-  }, [])
+  }, [connectionState])
 
   const disconnect = useCallback(async () => {
     if (callRef.current) {
