@@ -104,8 +104,10 @@ async def connect(background_tasks: BackgroundTasks):
         raise HTTPException(status_code=500, detail=f"Failed to connect: {str(e)}")
 
 
-# Mount static files for frontend
-frontend_path = os.path.realpath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
+# Mount static files for frontend (check multiple possible locations)
+frontend_path = os.path.realpath(os.path.join(os.path.dirname(__file__), "frontend", "dist"))
+if not os.path.exists(frontend_path):
+    frontend_path = os.path.realpath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
 logger.info(f"Looking for frontend at: {frontend_path}")
 if os.path.exists(frontend_path):
     logger.info("Frontend found, mounting static files")

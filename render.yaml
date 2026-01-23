@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: camb-voice-demo
+    runtime: docker
+    plan: starter
+    envVars:
+      - key: CAMB_API_KEY
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DAILY_API_KEY
+        sync: false
+      - key: PORT
+        value: 7860
