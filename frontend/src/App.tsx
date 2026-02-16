@@ -24,6 +24,7 @@ function App() {
   const [transcript, setTranscript] = useState<string>('')
   const [selectedCharacter, setSelectedCharacter] = useState<string>('bugs')
   const callRef = useRef<DailyCall | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const connect = useCallback(async () => {
     // Prevent double-clicks
@@ -75,8 +76,15 @@ function App() {
       callObject.on('track-started', (event) => {
         if (event.track?.kind === 'audio' && event.participant && !event.participant.local) {
           console.log('[Daily] Remote audio track started')
+          // Clean up previous audio element if any
+          if (audioRef.current) {
+            audioRef.current.pause()
+            audioRef.current.srcObject = null
+          }
           const audio = new Audio()
           audio.srcObject = new MediaStream([event.track])
+          audio.autoplay = true
+          audioRef.current = audio
           audio.play().catch(console.error)
         }
       })
@@ -120,6 +128,11 @@ function App() {
   }, [connectionState, selectedCharacter])
 
   const disconnect = useCallback(async () => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.srcObject = null
+      audioRef.current = null
+    }
     if (callRef.current) {
       await callRef.current.leave()
       await callRef.current.destroy()
@@ -141,6 +154,10 @@ function App() {
 
   useEffect(() => {
     return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.srcObject = null
+      }
       if (callRef.current) {
         callRef.current.leave()
         callRef.current.destroy()
