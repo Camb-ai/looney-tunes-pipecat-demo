@@ -165,6 +165,11 @@ async def run_bot(room_url: str, token: str, character: str = "bugs", tts_model:
         ),
     )
 
+    # Force TURN relay for environments that block outbound UDP (e.g. Cloud Run)
+    if os.getenv("FORCE_TURN_RELAY"):
+        logger.info("Forcing TURN relay for WebRTC media")
+        transport._client.set_ice_config({"iceTransportPolicy": "relay"})
+
     stt = create_stt_service()
     tts = create_tts_service(tts_model, char_config["voice_id"])
     llm = create_llm_service()
