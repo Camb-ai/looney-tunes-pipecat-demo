@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import Daily, { DailyCall } from '@daily-co/daily-js'
-import { Mic, MicOff, Phone, PhoneOff, Loader2 } from 'lucide-react'
+import { Mic, MicOff, Phone, PhoneOff } from 'lucide-react'
 
 type ConnectionState = 'idle' | 'connecting' | 'connected' | 'error'
 type AgentState = 'listening' | 'thinking' | 'speaking' | 'idle'
@@ -8,13 +8,14 @@ type AgentState = 'listening' | 'thinking' | 'speaking' | 'idle'
 type Character = {
   id: string
   name: string
+  color: string
   avatar: string
 }
 
 const CHARACTERS: Character[] = [
-  { id: 'bugs', name: 'Bugs Bunny', avatar: 'https://cambai-not-ai.conbersa.ai/bugs-bunny.png' },
-  { id: 'lola', name: 'Lola Bunny', avatar: 'https://cambai-not-ai.conbersa.ai/lola-bunny.png' },
-  { id: 'daffy', name: 'Daffy Duck', avatar: 'https://cambai-not-ai.conbersa.ai/daffy-duck.png' },
+  { id: 'bugs', name: 'Bugs Bunny', color: '#E8784A', avatar: 'https://cambai-not-ai.conbersa.ai/bugs-bunny.png' },
+  { id: 'lola', name: 'Lola Bunny', color: '#A0A0A0', avatar: 'https://cambai-not-ai.conbersa.ai/lola-bunny.png' },
+  { id: 'daffy', name: 'Daffy Duck', color: '#808080', avatar: 'https://cambai-not-ai.conbersa.ai/daffy-duck.png' },
 ]
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
   const [agentState, setAgentState] = useState<AgentState>('idle')
   const [isMuted, setIsMuted] = useState(false)
   const [transcript, setTranscript] = useState<string>('')
+  const [transcriptRole, setTranscriptRole] = useState<string>('')
   const [selectedCharacter, setSelectedCharacter] = useState<string>('bugs')
   const callRef = useRef<DailyCall | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -65,6 +67,7 @@ function App() {
         setConnectionState('idle')
         setAgentState('idle')
         setTranscript('')
+        setTranscriptRole('')
       })
 
       callObject.on('error', (error) => {
@@ -114,6 +117,7 @@ function App() {
 
           if (data.type === 'transcript' && data.text) {
             setTranscript(data.text)
+            setTranscriptRole(data.role || 'assistant')
           }
         }
       })
@@ -141,6 +145,7 @@ function App() {
     setConnectionState('idle')
     setAgentState('idle')
     setTranscript('')
+    setTranscriptRole('')
   }, [])
 
   const toggleMute = useCallback(() => {
@@ -167,138 +172,113 @@ function App() {
 
   return (
     <div className="min-h-screen bg-camb-bg flex flex-col items-center justify-center p-4">
-      {/* Character Selection */}
-      <div className="mb-8">
-        <p className="text-gray-500 text-sm text-center mb-3">Choose your character</p>
-        <div className="flex gap-3">
-          {CHARACTERS.map((char) => {
-            const isSelected = selectedCharacter === char.id
-            const isDisabled = connectionState === 'connecting' || connectionState === 'connected'
-            return (
-              <button
-                key={char.id}
-                onClick={() => !isDisabled && setSelectedCharacter(char.id)}
-                disabled={isDisabled}
-                className={`
-                  flex flex-col items-center p-3 rounded-xl transition-all duration-200
-                  ${isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
-                  ${isSelected
-                    ? 'bg-camb-orange/20 border-2 border-camb-orange'
-                    : 'bg-camb-card border-2 border-transparent hover:border-camb-border'
-                  }
-                `}
-              >
-                <img
-                  src={char.avatar}
-                  alt={char.name}
-                  className="w-16 h-20 object-contain mb-1"
-                />
-                <span className={`text-xs ${isSelected ? 'text-camb-orange' : 'text-gray-400'}`}>
-                  {char.name}
-                </span>
-              </button>
-            )
-          })}
-        </div>
+      {/* Character Selection — pill tabs */}
+      <div className="flex flex-wrap gap-2 mb-6 justify-center">
+        {CHARACTERS.map((char) => {
+          const isSelected = selectedCharacter === char.id
+          const isDisabled = connectionState === 'connecting' || connectionState === 'connected'
+          return (
+            <button
+              key={char.id}
+              onClick={() => !isDisabled && setSelectedCharacter(char.id)}
+              disabled={isDisabled}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
+                ${isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
+                ${isSelected
+                  ? 'bg-camb-orange/15 text-camb-orange'
+                  : 'bg-camb-card text-gray-400 hover:text-gray-300'
+                }
+              `}
+            >
+              <img
+                src={char.avatar}
+                alt={char.name}
+                className="w-5 h-6 object-contain flex-shrink-0"
+              />
+              {char.name}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Main Control */}
-      <div className="flex flex-col items-center">
-        {/* Button with pulse rings */}
-        <div className="relative">
-          {/* Pulse rings when speaking */}
-          {connectionState === 'connected' && agentState === 'speaking' && (
-            <>
-              <div className="absolute inset-0 rounded-full bg-camb-orange/30 pulse-ring" />
-              <div className="absolute inset-0 rounded-full bg-camb-orange/20 pulse-ring" style={{ animationDelay: '0.5s' }} />
-            </>
-          )}
-
-          {/* Main Button */}
-          <button
-          onClick={connectionState === 'idle' || connectionState === 'error' ? connect : disconnect}
-          disabled={connectionState === 'connecting'}
-          className={`
-            relative z-10 w-40 h-40 rounded-full flex items-center justify-center
-            transition-all duration-300 ease-out
-            ${connectionState === 'connecting'
-              ? 'bg-camb-card cursor-wait'
-              : connectionState === 'connected'
-                ? 'bg-red-500 hover:bg-red-600 hover:scale-105'
-                : 'bg-camb-orange hover:bg-camb-orange/90 hover:scale-105'
-            }
-            shadow-lg shadow-black/30
-          `}
-        >
-          {connectionState === 'connecting' ? (
-            <Loader2 className="w-12 h-12 text-white animate-spin" />
-          ) : connectionState === 'connected' ? (
-            <PhoneOff className="w-12 h-12 text-white" />
-          ) : (
-            <Phone className="w-12 h-12 text-white" />
-          )}
-          </button>
-        </div>
-
-        {/* Status Text */}
-        <div className="mt-8 text-center">
-          {connectionState === 'connecting' && (
-            <p className="text-gray-400 text-lg">Connecting...</p>
-          )}
-          {connectionState === 'connected' && (
-            <div className="flex flex-col items-center gap-2">
-              <div className="flex items-center gap-2">
-                {agentState === 'listening' && (
-                  <>
-                    <div className="flex gap-1 items-end h-5">
-                      {[...Array(5)].map((_, i) => (
-                        <div
-                          key={i}
-                          className="w-1 bg-camb-orange rounded-full wave-bar"
-                          style={{ height: '100%' }}
-                        />
-                      ))}
-                    </div>
-                    <span className="text-gray-400">Listening...</span>
-                  </>
-                )}
-                {agentState === 'thinking' && (
-                  <span className="text-gray-400">Thinking...</span>
-                )}
-                {agentState === 'speaking' && (
-                  <span className="text-camb-orange font-medium">Speaking...</span>
-                )}
-                {agentState === 'idle' && (
-                  <span className="text-gray-500">Ready</span>
-                )}
-              </div>
-              {transcript && (
-                <p className="text-gray-300 text-sm max-w-md mt-2 px-4">{transcript}</p>
-              )}
-            </div>
-          )}
-          {connectionState === 'error' && (
-            <p className="text-red-400 text-lg">Connection failed. Tap to retry.</p>
-          )}
-          {connectionState === 'idle' && (
-            <p className="text-gray-500 text-lg">Tap to start</p>
-          )}
-        </div>
-
-        {/* Mute Button - only show when connected */}
+      {/* Transcript / Status Display */}
+      <div className="max-w-2xl w-full rounded-2xl bg-camb-card border border-camb-border min-h-[160px] flex items-center justify-center px-6 py-8 mb-6">
+        {connectionState === 'idle' && (
+          <p className="text-gray-500 text-center">Tap to start the call...</p>
+        )}
+        {connectionState === 'connecting' && (
+          <p className="text-gray-400 text-center">Connecting...</p>
+        )}
+        {connectionState === 'error' && (
+          <p className="text-red-400 text-center">Connection failed. Tap to retry.</p>
+        )}
         {connectionState === 'connected' && (
+          <>
+            {!transcript && (agentState === 'listening' || agentState === 'idle') && (
+              <p className="text-gray-400 text-center">Listening...</p>
+            )}
+            {!transcript && agentState === 'thinking' && (
+              <p className="text-gray-400 text-center">Thinking...</p>
+            )}
+            {transcript && (
+              <p className={`text-center text-lg ${transcriptRole === 'user' ? 'text-camb-orange' : 'text-gray-200'}`}>
+                {transcript}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Call Controls */}
+      <div className="flex items-center gap-4">
+        {(connectionState === 'idle' || connectionState === 'error') && (
           <button
-            onClick={toggleMute}
-            className={`
-              mt-8 p-4 rounded-full transition-all duration-200
-              ${isMuted
-                ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                : 'bg-camb-card text-gray-400 hover:bg-camb-border hover:text-white'
-              }
-            `}
+            onClick={connect}
+            className="w-14 h-14 rounded-full bg-camb-orange hover:bg-camb-orange/90 flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg shadow-black/30"
           >
-            {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+            <Phone className="w-6 h-6 text-white" />
           </button>
+        )}
+        {connectionState === 'connecting' && (
+          <>
+            <button
+              disabled
+              className="w-12 h-12 rounded-full bg-camb-card flex items-center justify-center cursor-wait"
+            >
+              <Mic className="w-5 h-5 text-gray-500" />
+            </button>
+            <button
+              onClick={disconnect}
+              className="w-12 h-12 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all duration-200"
+            >
+              <PhoneOff className="w-5 h-5 text-white" />
+            </button>
+          </>
+        )}
+        {connectionState === 'connected' && (
+          <>
+            <button
+              onClick={toggleMute}
+              className={`
+                w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200
+                ${isMuted
+                  ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                  : agentState === 'listening'
+                    ? 'bg-white text-black hover:bg-gray-200'
+                    : 'bg-camb-card text-gray-400 hover:bg-camb-border hover:text-white'
+                }
+              `}
+            >
+              {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            </button>
+            <button
+              onClick={disconnect}
+              className="w-12 h-12 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all duration-200"
+            >
+              <PhoneOff className="w-5 h-5 text-white" />
+            </button>
+          </>
         )}
       </div>
 
